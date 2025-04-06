@@ -6,6 +6,7 @@ dotenv.config()
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 let dataforvoiceroute
+let latestAnalysisData = null;
 
 function extractAndParseJson(text) {
     const jsonStart = text.indexOf('{');
@@ -147,7 +148,6 @@ const handleV2Route = async (req, res) => {
         
         // Now pass the formatted search results to the AI
         let result = await detectNewsFromGoogle(newsText, newsLink, formattedSearchResults)
-        dataforvoiceroute = result
         
         if (!result) {
             return res.status(500).json({
@@ -162,12 +162,21 @@ const handleV2Route = async (req, res) => {
         // Try to parse the result as JSON
         try {
             const jsonResult = extractAndParseJson(result)
+            
+            // Store the latest analysis data for voice generation
+            latestAnalysisData = jsonResult;
+            dataforvoiceroute = result;
+            
             return res.status(200).json({
                 status: true,
                 data: jsonResult 
             })
         } catch (e) {
             console.error("Failed to parse result as JSON:", e)
+            
+            // Store the latest analysis data for voice generation even if it's not valid JSON
+            dataforvoiceroute = result;
+            
             return res.status(200).json({
                 status: true,
                 data: result
@@ -196,9 +205,36 @@ router.post('/', handleDefaultRoute)
 router.post('/v2', handleV2Route)
 router.post('/voice', handleVoiceRoute)
 
-// Add this function to get the latest analysis data
+// Update the getLatestAnalysisData function to use both the latestAnalysisData and dataforvoiceroute
 function getLatestAnalysisData() {
-    return dataforvoiceroute;
+    console.log("getLatestAnalysisData called");
+    
+    // For valid JSON data, use latestAnalysisData
+    if (latestAnalysisData) {
+        console.log("Returning parsed JSON analysis data");
+        return latestAnalysisData;
+    } 
+    
+    // For raw string data, try to parse it
+    if (dataforvoiceroute) {
+        console.log("Trying to parse dataforvoiceroute");
+        try {
+            return extractAndParseJson(dataforvoiceroute);
+        } catch (e) {
+            console.log("Could not parse dataforvoiceroute as JSON");
+            // Return a minimal object that the voice system can use
+            return {
+                authenticity_score: 50,
+                red_flags: ["Unable to parse analysis data"],
+                credibility_indicators: [],
+                final_verdict: "UNCERTAIN",
+                summary: "Analysis data is available but couldn't be parsed properly. Please try running the analysis again."
+            };
+        }
+    }
+    
+    console.log("No analysis data available");
+    return null;
 }
 
 // Export both the router and the route handlers for direct calling
