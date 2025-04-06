@@ -22,18 +22,18 @@ app.get('/', (req, res) => {
 
 // CORS setup with appropriate configuration for different environments
 app.use((req, res, next) => {
-  const allowedOrigins = ['https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+  const allowedOrigins = ['https://truth-guards.netlify.app'];
   const origin = req.headers.origin;
   
   // Check if the origin is in our allowed list
-  if (allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
   } else {
-    // For development, allow any origin
+    // For development, allow any origin without credentials
     res.header('Access-Control-Allow-Origin', '*');
   }
   
-  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
@@ -45,17 +45,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Also keep the regular CORS middleware for compatibility
-app.use(cors({ 
+// Replace the cors middleware with a more specific configuration
+app.use(cors({
   origin: function(origin, callback) {
-    const allowedOrigins = ['https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+    const allowedOrigins = ['https://polite-dasik-5bd09f.netlify.app', 'https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+    
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all origins in development
+      // In production, reject requests from non-allowed origins
+      // In development, allow all origins
+      callback(null, process.env.NODE_ENV !== 'production');
     }
   },
   credentials: true,
