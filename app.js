@@ -22,16 +22,22 @@ app.get('/', (req, res) => {
 
 // CORS setup with appropriate configuration for different environments
 app.use((req, res, next) => {
-  const allowedOrigins = ['https://truth-guards.netlify.app'];
-  const origin = req.headers.origin;
-  
-  // Check if the origin is in our allowed list
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
+  // In development mode, allow all origins with credentials
+  if (process.env.NODE_ENV !== 'production') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Credentials', 'true');
   } else {
-    // For development, allow any origin without credentials
-    res.header('Access-Control-Allow-Origin', '*');
+    // In production, check against allowed origins list
+    const allowedOrigins = ['https://truth-guards.netlify.app', 'https://polite-dasik-5bd09f.netlify.app', 'https://lustrous-halva-6f3277.netlify.app'];
+    const origin = req.headers.origin;
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    } else {
+      // For other origins, allow without credentials
+      res.header('Access-Control-Allow-Origin', '*');
+    }
   }
   
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -48,7 +54,7 @@ app.use((req, res, next) => {
 // Replace the cors middleware with a more specific configuration
 app.use(cors({
   origin: function(origin, callback) {
-    const allowedOrigins = ['https://polite-dasik-5bd09f.netlify.app', 'https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+    const allowedOrigins = ['https://truth-guards.netlify.app', 'https://polite-dasik-5bd09f.netlify.app', 'https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
     
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);

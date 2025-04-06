@@ -64,6 +64,13 @@ Make sure your response is in natural, conversational Hindi as if a real person 
 
 
 router.post('/', async (req, res) => {
+    // Set CORS headers before any error handling
+    const origin = req.headers.origin;
+    if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+
     if (!req.body) {
         return res.status(400).json({
             message: "Data not provided",
@@ -71,34 +78,55 @@ router.post('/', async (req, res) => {
         });
     }
 
-    console.log("Voice route called with body:", JSON.stringify(req.body));
-    console.log("Headers:", JSON.stringify(req.headers));
+    console.log("Voice route called with authorization:", req.headers.authorization ? "Present" : "Missing");
 
     try {
-        // Fetch the analysis data
-        console.log("Fetching data from:", `${process.env.API_URL}/ai-news-detect/voice`);
-        let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": req.headers.authorization || ""
-            },
-            body: JSON.stringify(req.body)
-        });
+        // Get access to the AINewsDetect module handlers
+        const AINewsDetect = require('./AINewsDetect');
         
-        console.log("Analysis response status:", response.status);
-        let analysisResponse = await response.json();
-        console.log("Analysis response:", JSON.stringify(analysisResponse));
+        // Two options - either use direct call or HTTP fetch
+        let analysisData;
         
-        if (!analysisResponse.status || !analysisResponse.data) {
+        // Try to get data directly first for better performance
+        if (AINewsDetect.getLatestAnalysisData) {
+            console.log("Getting analysis data directly from memory");
+            analysisData = AINewsDetect.getLatestAnalysisData();
+        }
+        
+        // If no data available directly, fetch it through HTTP
+        if (!analysisData) {
+            console.log("No data in memory, fetching from API");
+            let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": req.headers.authorization || ""
+                },
+                body: JSON.stringify(req.body)
+            });
+            
+            console.log("Analysis response status:", response.status);
+            let analysisResponse = await response.json();
+            
+            if (!analysisResponse.status || !analysisResponse.data) {
+                return res.status(400).json({
+                    message: "Failed to get analysis data",
+                    status: 400
+                });
+            }
+            
+            analysisData = analysisResponse.data;
+        }
+        
+        if (!analysisData) {
             return res.status(400).json({
-                message: "Failed to get analysis data",
+                message: "No analysis data available",
                 status: 400
             });
         }
 
         // Generate speech from the analysis data
-        let speechForTheAudio = await getMySpeech(analysisResponse.data);
+        let speechForTheAudio = await getMySpeech(analysisData);
 
         if (!speechForTheAudio) {
             return res.status(400).json({
@@ -108,7 +136,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        console.log("Generated speech text:", speechForTheAudio);
+        console.log("Generated speech text length:", speechForTheAudio.length);
         
         // Convert speech to audio
         const audioBuffer = await streamAudio(speechForTheAudio);
