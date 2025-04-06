@@ -22,8 +22,18 @@ app.get('/', (req, res) => {
 
 // CORS setup with appropriate configuration for different environments
 app.use((req, res, next) => {
-  // Allow all origins in development and specific origins in production
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = ['https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+  const origin = req.headers.origin;
+  
+  // Check if the origin is in our allowed list
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    // For development, allow any origin
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
@@ -37,8 +47,20 @@ app.use((req, res, next) => {
 
 // Also keep the regular CORS middleware for compatibility
 app.use(cors({ 
-  origin: '*',
-  credentials: true
+  origin: function(origin, callback) {
+    const allowedOrigins = ['https://lustrous-halva-6f3277.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins in development
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 }));
 
 // Set API_URL for routes to use

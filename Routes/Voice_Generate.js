@@ -71,13 +71,24 @@ router.post('/', async (req, res) => {
         });
     }
 
+    console.log("Voice route called with body:", JSON.stringify(req.body));
+    console.log("Headers:", JSON.stringify(req.headers));
+
     try {
         // Fetch the analysis data
+        console.log("Fetching data from:", `${process.env.API_URL}/ai-news-detect/voice`);
         let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
-            method: "POST"
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": req.headers.authorization || ""
+            },
+            body: JSON.stringify(req.body)
         });
         
+        console.log("Analysis response status:", response.status);
         let analysisResponse = await response.json();
+        console.log("Analysis response:", JSON.stringify(analysisResponse));
         
         if (!analysisResponse.status || !analysisResponse.data) {
             return res.status(400).json({
