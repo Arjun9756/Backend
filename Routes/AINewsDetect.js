@@ -196,6 +196,11 @@ router.post('/', handleDefaultRoute)
 router.post('/v2', handleV2Route)
 router.post('/voice', handleVoiceRoute)
 
+// Add this function to get the latest analysis data
+function getLatestAnalysisData() {
+    return dataforvoiceroute;
+}
+
 // Export both the router and the route handlers for direct calling
 module.exports = {
     route: router,
@@ -209,5 +214,7 @@ module.exports = {
         detectNews,
         detectNewsFromGoogle,
         extractAndParseJson
-    }
+    },
+    // Function to get the latest analysis data
+    getLatestAnalysisData
 }

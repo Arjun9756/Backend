@@ -2,147 +2,156 @@ const express = require('express')
 const router = express.Router();
 const { Groq } = require('groq-sdk');
 const dotenv = require('dotenv');
-const { ElevenLabsClient, stream } = require('elevenlabs')
+const { ElevenLabsClient } = require('elevenlabs')
 const AINewsDetect = require('./AINewsDetect');
 dotenv.config();
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); 
-const client = new ElevenLabsClient({ apiKey: process.env.IIEVLEVENLABS_API_KEY });
+// Initialize API clients with longer timeouts
+const groq = new Groq({ 
+    apiKey: process.env.GROQ_API_KEY,
+    timeout: 120000 // 2 minute timeout for Groq
+}); 
+
+const client = new ElevenLabsClient({ 
+    apiKey: process.env.IIEVLEVENLABS_API_KEY
+});
 
 async function streamAudio(text) {
-    try
-    {
+    try {
+        // Add more logging
+        console.log("Starting audio generation with ElevenLabs");
+        console.log("Text length:", text.length);
+        
         const audioStream = await client.textToSpeech.convertAsStream('JBFqnCBsd6RMkjVDRZzb', {
-        text: `${text}`,
-        model_id: 'eleven_multilingual_v2'
-    })
+            text: `${text}`,
+            model_id: 'eleven_multilingual_v2',
+            // Smaller chunk of text if needed
+            voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75
+            }
+        });
 
-    const chunks = []
-    for await (const chunk of audioStream) {
-        chunks.push(Buffer.from(chunk))
-    }
-    return Buffer.concat(chunks)
+        const chunks = []
+        for await (const chunk of audioStream) {
+            chunks.push(Buffer.from(chunk))
+        }
+        console.log("Audio generation completed successfully");
+        return Buffer.concat(chunks)
     }
     catch (error) {
-        console.log("Something Went Caused in streamAudio Function !", error)
+        console.error("Error in streamAudio Function:", error);
         return null
     }
 }
 
-
 async function getMySpeech(analysisData) {
-    const prompt = `You are an expert fact-checker and news analyst creating voice content for our AI Fake News Detection app. 
-
-Transform the following news analysis data into a natural, engaging response in HINDI (not Hinglish). The response should help users understand our credibility assessment of the news.
-
-Analysis Data: 
-${JSON.stringify(analysisData)}
+    try {
+        console.log("Starting speech generation with Groq");
+        
+        // Simplify the prompt to reduce generation time
+        const prompt = `Create a brief Hindi explanation (100-150 words) of this news analysis:
+        
+Analysis: ${JSON.stringify(analysisData)}
 
 Your response should:
-1. Start with a friendly greeting like "नमस्ते दोस्तों" or "सुनिए"
-2. Clearly mention the news headline and state the authenticity score in simple terms
-3. Highlight the key red flags or suspicious elements found in the news
-4. Mention any elements of the news that appear to be factual
-5. Provide a clear final verdict (REAL/FAKE/UNCERTAIN/MISLEADING)
-6. End with practical advice for the user to verify such news
+1. Start with "नमस्ते"
+2. Mention if the news is real/fake and the authenticity score
+3. Briefly mention 1-2 key factors that led to this conclusion
+4. End with advice on verifying such news
 
-Make sure your response is in natural, conversational Hindi as if a real person is explaining the news. Use everyday Hindi expressions and avoid sounding robotic or overly formal. The goal is to make users feel like they're getting valuable information from a knowledgeable friend.`
+Keep it simple, natural and conversational in pure Hindi.`;
 
-    try {
         const completions = await groq.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
             model: "llama-3.3-70b-versatile",
             temperature: 0.5,
-            max_tokens: 4096,
-        })
-        return completions.choices[0].message.content
+            max_tokens: 1024, // Reduce tokens for faster response
+        });
+        
+        console.log("Speech generation completed successfully");
+        return completions.choices[0].message.content;
     }
     catch (error) {
-        console.log("Something Went Caused in Voice Route Check Out !", error)
-        return null
+        console.error("Error in getMySpeech:", error);
+        return "नमस्ते, हमें खेद है कि इस समय हिंदी में विश्लेषण उपलब्ध नहीं है। कृपया बाद में पुनः प्रयास करें।";
     }
 }
 
-
 router.post('/', async (req, res) => {
-    if (!req.body) {
-        return res.status(400).json({
-            message: "Data not provided",
-            status: 400
-        });
-    }
-
+    // Set a longer timeout for this request (30 seconds)
+    req.setTimeout(30000);
+    res.setTimeout(30000);
+    
+    console.log("Voice generation request received");
+    
     try {
-        // OPTION 1: Direct call to voice handler (serverless compatible)
-        let analysisResponse;
-        try {
-            // Create a mock request and response object
-            const mockReq = { 
-                body: {},
-                headers: req.headers
-            };
-            const mockRes = {
-                status: function(code) {
-                    this.statusCode = code;
-                    return this;
-                },
-                json: function(data) {
-                    this.data = data;
-                    return this;
-                }
+        // Get analysis data directly from AINewsDetect
+        console.log("Retrieving analysis data");
+        const analysisData = AINewsDetect.getLatestAnalysisData();
+        
+        if (!analysisData) {
+            console.log("No analysis data available, generating fallback data");
+            // Create fallback analysis data
+            const fallbackData = {
+                "authenticity_score": 50,
+                "final_verdict": "UNCERTAIN",
+                "summary": "Unable to retrieve analysis data"
             };
             
-            // Directly call the voice handler
-            await AINewsDetect.handlers.voice(mockReq, mockRes);
-            analysisResponse = mockRes.data;
+            // Generate speech from the fallback data
+            let speechForTheAudio = await getMySpeech(fallbackData);
             
-            if (!analysisResponse || !analysisResponse.data) {
-                throw new Error("No analysis data returned from direct call");
-            }
-        } catch (error) {
-            console.error("Error in direct route call:", error);
-            
-            // FALLBACK: Try HTTP fetch if direct call fails
-            console.log("Falling back to HTTP fetch");
-            let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
-                method: "POST"
-            });
-            
-            analysisResponse = await response.json();
-            
-            if (!analysisResponse.status || !analysisResponse.data) {
+            if (!speechForTheAudio) {
                 return res.status(400).json({
-                    message: "Failed to get analysis data",
+                    message: "Speech generation failed",
                     status: 400
                 });
             }
+            
+            // Convert speech to audio
+            const audioBuffer = await streamAudio(speechForTheAudio);
+            
+            if (!audioBuffer) {
+                return res.status(400).json({
+                    message: "Audio generation failed",
+                    status: 400
+                });
+            }
+            
+            // Set proper headers and send audio
+            res.set({
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': audioBuffer.length
+            });
+            
+            return res.send(audioBuffer);
         }
-
+        
         // Generate speech from the analysis data
-        let speechForTheAudio = await getMySpeech(analysisResponse.data);
-
+        console.log("Generating speech from analysis data");
+        let speechForTheAudio = await getMySpeech(analysisData);
+        
         if (!speechForTheAudio) {
             return res.status(400).json({
                 message: "Speech generation failed",
-                advice: "Contact Backend Developer",
                 status: 400
             });
         }
-
-        console.log("Generated speech text:", speechForTheAudio);
         
         // Convert speech to audio
+        console.log("Converting speech to audio");
         const audioBuffer = await streamAudio(speechForTheAudio);
         
         if (!audioBuffer) {
             return res.status(400).json({
                 message: "Audio generation failed",
-                advice: "Check ElevenLabs API key",
                 status: 400
             });
         }
         
         // Set proper headers and send audio
+        console.log("Sending audio response");
         res.set({
             'Content-Type': 'audio/mpeg',
             'Content-Length': audioBuffer.length
