@@ -97,13 +97,27 @@ router.post('/', async (req, res) => {
             console.log("Analysis data found:", !!analysisData);
         }
         
-        // If no analysis data, return error
+        // If no analysis data, use default data instead of returning error
         if (!analysisData) {
-            console.log("No analysis data available - returning error");
-            return res.status(400).json({
-                message: "No analysis data available. Please analyze a news article first.",
-                status: 400
-            });
+            console.log("No analysis data available - using default data");
+            analysisData = {
+                authenticity_score: 50,
+                red_flags: ["No news has been analyzed yet"],
+                credibility_indicators: ["Please analyze a news article first"],
+                url_credibility: {
+                    is_suspicious: false,
+                    domain_analysis: "No URL has been analyzed yet"
+                },
+                confidence_level: 0,
+                final_verdict: "UNCERTAIN",
+                summary: "Welcome to TruthGuard! Please analyze a news article to get detailed analysis.",
+                detailed_reasoning: "This is a placeholder response because no news has been analyzed yet. Please use the analyze feature with a news article to get a detailed assessment.",
+                verification_recommendations: [
+                    "Enter a news article in the main text box",
+                    "Click the 'Analyze News' button",
+                    "Then try the voice analysis again"
+                ]
+            };
         }
 
         // Generate speech - use cached if available
@@ -189,13 +203,27 @@ router.get('/', async (req, res) => {
             console.log("Analysis data found:", !!analysisData);
         }
         
-        // If no analysis data, return error
+        // If no analysis data, use default data instead of returning error
         if (!analysisData) {
-            console.log("No analysis data available for GET request - returning error");
-            return res.status(400).json({
-                message: "No analysis data available. Please analyze a news article first.",
-                status: 400
-            });
+            console.log("No analysis data available for GET request - using default data");
+            analysisData = {
+                authenticity_score: 50,
+                red_flags: ["No news has been analyzed yet"],
+                credibility_indicators: ["Please analyze a news article first"],
+                url_credibility: {
+                    is_suspicious: false,
+                    domain_analysis: "No URL has been analyzed yet"
+                },
+                confidence_level: 0,
+                final_verdict: "UNCERTAIN",
+                summary: "Welcome to TruthGuard! Please analyze a news article to get detailed analysis.",
+                detailed_reasoning: "This is a placeholder response because no news has been analyzed yet. Please use the analyze feature with a news article to get a detailed assessment.",
+                verification_recommendations: [
+                    "Enter a news article in the main text box",
+                    "Click the 'Analyze News' button",
+                    "Then try the voice analysis again"
+                ]
+            };
         }
 
         // Generate speech - use cached if available
