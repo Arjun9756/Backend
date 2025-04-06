@@ -13,6 +13,13 @@ const voice = require('./Routes/Voice_Generate')
 dotenv.config()
 app.use(express.json())
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Server is running',
+    status: true
+  })
+})
+
 // CORS setup with appropriate configuration for different environments
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
