@@ -1,0 +1,30 @@
+{
+  "name": "truthguard-backend",
+  "version": "1.0.0",
+  "description": "Backend for AI-powered fake news detection system",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "vercel-build": "echo 'Building for Vercel...'"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "groq-sdk": "^0.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "parse-json": "^8.2.0",
+    "elevenlabs": "^1.54.0",
+    "node-fetch": "^2.6.9"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
