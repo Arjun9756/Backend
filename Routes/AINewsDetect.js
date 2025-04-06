@@ -92,7 +92,8 @@ async function detectNewsFromGoogle(newsText , newsLink , googleSearchResult) {
     }
 }
 
-router.post('/', async (req, res) => {
+// Default route handler
+const handleDefaultRoute = async (req, res) => {
     let newsText = req.body.newsText
     let newsLink = req.body.newsLink
 
@@ -110,9 +111,10 @@ router.post('/', async (req, res) => {
         status: true,
         data: result
     })
-})
+}
 
-router.post('/v2', async (req, res) => {
+// V2 route handler
+const handleV2Route = async (req, res) => {
     try {
         let newsText = req.body.newsText
         let newsLink = req.body.newsLink || ""
@@ -179,13 +181,33 @@ router.post('/v2', async (req, res) => {
             error: error.message
         })
     }
-})
+}
 
-router.post('/voice',(req,res)=>{
+// Voice route handler
+const handleVoiceRoute = (req, res) => {
     return res.status(200).json({
-        data:dataforvoiceroute,
-        status:200
+        data: dataforvoiceroute,
+        status: 200
     })
-})
+}
 
-module.exports = router
+// Register the route handlers
+router.post('/', handleDefaultRoute)
+router.post('/v2', handleV2Route)
+router.post('/voice', handleVoiceRoute)
+
+// Export both the router and the route handlers for direct calling
+module.exports = {
+    route: router,
+    handlers: {
+        default: handleDefaultRoute,
+        v2: handleV2Route,
+        voice: handleVoiceRoute
+    },
+    // Helper functions for internal use
+    utils: {
+        detectNews,
+        detectNewsFromGoogle,
+        extractAndParseJson
+    }
+}

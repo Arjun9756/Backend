@@ -37,10 +37,10 @@ process.env.API_URL = process.env.NODE_ENV === 'production'
   : `http://localhost:${process.env.PORT || 5000}`;
 
 app.use('/login', Login)
-app.use('/ai-news-detect', AINewsDetect)
+app.use('/ai-news-detect', AINewsDetect.route)
 app.use('/signup', Signup)
 app.use('/data', DataExtractor)
-app.use('/search', SearchAPI)
+app.use('/search', SearchAPI.route)
 app.use('/voice', voice)
 
 // For Vercel, we need to export the Express app as a module

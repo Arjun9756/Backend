@@ -28,7 +28,8 @@ async function searchGoogle(query , numResults = 2){
     }
 }
 
-router.post('/' , async (req,res)=>{
+// Search route handler
+const handleSearchRoute = async (req, res) => {
     try{
         const query = req.body.query
         if(!query){
@@ -67,6 +68,19 @@ router.post('/' , async (req,res)=>{
             error:error.message || "An error occurred while processing the request"
         })
     }
-})
+}
 
-module.exports = router
+// Register the route handler
+router.post('/', handleSearchRoute)
+
+// Export both the router and the route handler for direct calling
+module.exports = {
+    route: router,
+    handlers: {
+        search: handleSearchRoute
+    },
+    // Helper functions for internal use
+    utils: {
+        searchGoogle
+    }
+}

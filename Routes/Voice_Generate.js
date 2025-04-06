@@ -3,6 +3,7 @@ const router = express.Router();
 const { Groq } = require('groq-sdk');
 const dotenv = require('dotenv');
 const { ElevenLabsClient, stream } = require('elevenlabs')
+const AINewsDetect = require('./AINewsDetect');
 dotenv.config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); 
@@ -72,18 +73,49 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        // Fetch the analysis data using environment variable directly
-        let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
-            method: "POST"
-        });
-        
-        let analysisResponse = await response.json();
-        
-        if (!analysisResponse.status || !analysisResponse.data) {
-            return res.status(400).json({
-                message: "Failed to get analysis data",
-                status: 400
+        // OPTION 1: Direct call to voice handler (serverless compatible)
+        let analysisResponse;
+        try {
+            // Create a mock request and response object
+            const mockReq = { 
+                body: {},
+                headers: req.headers
+            };
+            const mockRes = {
+                status: function(code) {
+                    this.statusCode = code;
+                    return this;
+                },
+                json: function(data) {
+                    this.data = data;
+                    return this;
+                }
+            };
+            
+            // Directly call the voice handler
+            await AINewsDetect.handlers.voice(mockReq, mockRes);
+            analysisResponse = mockRes.data;
+            
+            if (!analysisResponse || !analysisResponse.data) {
+                throw new Error("No analysis data returned from direct call");
+            }
+        } catch (error) {
+            console.error("Error in direct route call:", error);
+            
+            // FALLBACK: Try HTTP fetch if direct call fails
+            console.log("Falling back to HTTP fetch");
+            let response = await fetch(`${process.env.API_URL}/ai-news-detect/voice`, {
+                method: "POST"
             });
+            
+            analysisResponse = await response.json();
+            
+            if (!analysisResponse.status || !analysisResponse.data) {
+                return res.status(400).json({
+                    message: "Failed to get analysis data",
+                    status: 400
+                });
+            }
         }
 
         // Generate speech from the analysis data
